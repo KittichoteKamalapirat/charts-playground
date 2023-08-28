@@ -1,5 +1,12 @@
 import clsx from "clsx";
-import { curveCardinal, line, select } from "d3";
+import {
+  axisBottom,
+  axisLeft,
+  curveCardinal,
+  line,
+  scaleLinear,
+  select,
+} from "d3";
 import { useEffect, useRef } from "react";
 
 export interface AudioPitch {
@@ -22,16 +29,45 @@ const Chart = ({ data, className }: Props) => {
 
   useEffect(() => {
     const svg = select(svgRef.current);
+    // adding axis
+    const maxX = Math.max(...data.map((val) => val.seconds));
+    const minX = Math.min(...data.map((val) => val.seconds));
+
+    const maxY = Math.max(...data.map((val) => val.frequency));
+    const minY = Math.min(...data.map((val) => val.frequency));
+
+    const svgWidth = 600; // have to match css
+    const svgHeight = 300;
+
+    const xScale = scaleLinear().domain([0, maxX]).range([0, svgWidth]);
+
+    const yScale = scaleLinear().domain([0, maxY]).range([svgHeight, 0]);
+
+    const xAxis = axisBottom(xScale)
+      .ticks(data.length)
+      .tickFormat((index) => index + 1);
+    svg
+      .select(".x-axis")
+      .style("transform", `translateY(${svgHeight}px)`)
+      .call(xAxis);
+
+    const yAxis = axisLeft(yScale);
+    svg
+      .select(".y-axis")
+      .style("transform", `translateX(${svgWidth}px)`)
+      .call(yAxis);
+
     const myLine = line<AudioPitch>()
-      .x((value) => value.seconds * 200)
-      .y((value) => 150 - value.frequency)
+      .x((value) => xScale(value.seconds))
+      .y((value) => yScale(value.frequency))
       .curve(curveCardinal);
 
     svg
-      .selectAll("path")
+      .selectAll(".line")
       .data([data])
       .join("path")
-      .attr("d", (value) => myLine(value))
+      .attr("class", "line")
+      .attr("d", myLine)
       .attr("fill", "none")
       .attr("stroke", "blue");
   }, [data]);
@@ -40,7 +76,10 @@ const Chart = ({ data, className }: Props) => {
       {/* <svg ref={svgRef}>
         <path d="M0,150 100,100 150,120" stroke="blue" fill="none" />
       </svg> */}
-      <svg ref={svgRef} />
+      <svg ref={svgRef}>
+        <g className="x-axis" />
+        <g className="y-axis" />
+      </svg>
     </div>
   );
 };
